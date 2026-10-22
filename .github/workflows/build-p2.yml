@@ -1,0 +1,63 @@
+name: Build ImmortalWrt for 360 P2
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: p2-source-build
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 360
+    env:
+      P2_JOBS: '2'
+      P2_BUILD_ROOT: ${{ runner.temp }}/immortalwrt-p2-build
+      P2_RESULT_DIR: ${{ github.workspace }}/firmware
+    steps:
+      - name: Checkout build recipe
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+
+      - name: Reclaim preinstalled tools on the disposable hosted runner
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$GITHUB_ACTIONS" = true
+          test "$RUNNER_ENVIRONMENT" = github-hosted
+          # These are fixed, preinstalled tool directories on this temporary VM only.
+          # No cleanup is run on the user's Windows computer or on self-hosted runners.
+          for path in /usr/local/lib/android /usr/share/dotnet /opt/ghc /usr/local/.ghcup /opt/hostedtoolcache/CodeQL; do
+            if [[ -d "$path" && ! -L "$path" && "$(realpath -- "$path")" = "$path" ]]; then
+              sudo rm -rf -- "$path"
+            fi
+          done
+          sudo apt-get clean
+          df -h /
+
+      - name: Install compiler dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            build-essential clang lld flex bison g++ gawk gcc-multilib g++-multilib \
+            gettext git libncurses-dev libssl-dev python3 python3-setuptools python3-pyelftools \
+            rsync swig unzip zlib1g-dev file wget curl patch time \
+            libelf-dev libgmp-dev libmpc-dev libmpfr-dev libyaml-dev liblzma-dev \
+            help2man texinfo libtool autoconf automake cmake ccache gengetopt \
+            xsltproc libexpat1-dev
+
+      - name: Full source build and artifact checks
+        shell: bash
+        run: bash build.sh
+
+      - name: Upload firmware, checks and logs
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: immortalwrt-25.12.2-360-p2-experimental
+          path: firmware/
+          if-no-files-found: warn
+          retention-days: 14
