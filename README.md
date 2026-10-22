@@ -46,6 +46,8 @@ python3 verify_image.py path/to/compiled-sysupgrade.bin --type sysupgrade
 
 The checker parses the actual embedded DTB and checks the board identity, Flash layout, read-only factory/boot regions, dual-band calibration bindings, Ethernet MAC source, USB controller enablement, PCIe and reset GPIO. It verifies the uImage CRCs, MIPS/Linux image type and image size. For sysupgrade it also checks the SquashFS superblock/table bounds and the fwtool trailer CRC and supported board metadata; it does not fully decompress or test the filesystem. The collector rejects raw DTBs and checks the package manifest for required drivers. Standalone DTBs remain accepted only for source-level preflight checks.
 
+For this ramips image recipe, the board DTB must end exactly at the end of the decompressed kernel. Linux 6.12's internal `drivers/of/empty_root.dtb` is not the appended board description. Tests also reject an interior P2 tree followed by the wrong appended board or unexplained trailing bytes. If validation fails after images exist, `diagnostics/UNVERIFIED-target-output.tar.gz` preserves generated files for investigation; **its contents have not passed verification and must not be flashed**.
+
 These checks **do not prove the firmware boots or that hardware works**. Before calling this firmware usable, test the physical LAN/WAN ports, both Wi-Fi bands, the actual USB device, reboot/reset and the Breed recovery entry on the user's router. Keep the original complete Flash/EEPROM backups. No flashing operation is automated by this repository.
 
 Do not flash a compiler input, DTB, source archive, or a log-only failed artifact. Installation steps will be determined from the actual successful build output and recovery options, after review.

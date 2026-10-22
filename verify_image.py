@@ -180,14 +180,23 @@ def inspect(data, image_type=None):
     decoder = lzma.LZMADecompressor(format=lzma.FORMAT_ALONE)
     kernel = decoder.decompress(payload,max_length=32*1024*1024)
     if not decoder.eof: raise ValueError('kernel_decompression_limit')
-    candidates, pos = [],0
+    candidates, pos, valid_trees = [],0,0
     while True:
         at = kernel.find(bytes.fromhex('d00dfeed'),pos)
         if at < 0: break
         pos = at+4
-        try: candidates.append(parse_dtb(kernel[at:]))
+        try:
+            nodes = parse_dtb(kernel[at:])
+            valid_trees += 1
+            # KERNEL_DTB appends the board DTB after the raw kernel. Linux 6.12
+            # also embeds drivers/of/empty_root.dtb inside the kernel itself.
+            # Only the DTB that ends exactly at the decompressed image end is
+            # the board appended by this target's image recipe.
+            total = struct.unpack_from('>I',kernel,at+4)[0]
+            if at+total == len(kernel): candidates.append(nodes)
         except (ValueError,IndexError,UnicodeError,struct.error): continue
-    if len(candidates) != 1: raise ValueError('expected_one_embedded_dtb')
+    if len(candidates) != 1:
+        raise ValueError(f'expected_one_appended_dtb(valid={valid_trees},terminal={len(candidates)})')
     return validate_board(candidates[0]), 'uimage'
 
 
