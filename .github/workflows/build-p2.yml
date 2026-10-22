@@ -53,6 +53,22 @@ jobs:
         shell: bash
         run: bash build.sh
 
+      - name: Preserve unverified target output for diagnosis after failure
+        if: failure()
+        shell: bash
+        run: |
+          set -euo pipefail
+          target="$P2_BUILD_ROOT/source/bin/targets/ramips/mt76x8"
+          if [[ -d "$target" ]]; then
+            mkdir -p "$P2_RESULT_DIR/diagnostics"
+            # Only top-level generated target files, never source keys or user backups.
+            find "$target" -maxdepth 1 -type f -printf '%f\0' |
+              tar --create --gzip --file "$P2_RESULT_DIR/diagnostics/UNVERIFIED-target-output.tar.gz" \
+                --directory "$target" --null --files-from -
+            printf '%s\n' 'DIAGNOSTICS ONLY: these files did not pass the complete checks. Do not flash.' \
+              > "$P2_RESULT_DIR/diagnostics/DO-NOT-FLASH.txt"
+          fi
+
       - name: Upload firmware, checks and logs
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
