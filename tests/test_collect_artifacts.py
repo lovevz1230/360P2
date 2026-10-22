@@ -15,8 +15,8 @@ ROOT = Path(__file__).resolve().parents[1]
 PACKAGES = ['kmod-mt7603','kmod-mt76x2','kmod-usb2','kmod-usb-ohci','kmod-usb-storage','block-mount','kmod-fs-ext4','luci-base']
 
 
-def image():
-    payload = lzma.compress(encode(fixture()),format=lzma.FORMAT_ALONE)
+def image(kernel=None):
+    payload = lzma.compress(encode(fixture()) if kernel is None else kernel,format=lzma.FORMAT_ALONE)
     header = bytearray(struct.pack('>7I4B32s',0x27051956,0,0,len(payload),0x80000000,0x80000000,zlib.crc32(payload),5,5,2,3,b'test kernel'))
     struct.pack_into('>I',header,4,zlib.crc32(header))
     return bytes(header)+payload
