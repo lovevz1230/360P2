@@ -16,7 +16,7 @@ jobs:
     timeout-minutes: 360
     env:
       P2_JOBS: '2'
-      P2_BUILD_ROOT: ${{ runner.temp }}/immortalwrt-p2-build
+      P2_BUILD_ROOT: /tmp/immortalwrt-p2-build
       P2_RESULT_DIR: ${{ github.workspace }}/firmware
     steps:
       - name: Checkout build recipe
