@@ -1,0 +1,10 @@
+__pycache__/
+*.pyc
+cache/
+firmware/
+build/
+*.bin
+*.tar.gz
+full.bin
+eeprom.bin
+firmware.bin

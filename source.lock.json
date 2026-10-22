@@ -1,0 +1,12 @@
+{
+  "project": "ImmortalWrt",
+  "tag": "v25.12.2",
+  "url": "https://codeload.github.com/immortalwrt/immortalwrt/tar.gz/refs/tags/v25.12.2",
+  "sha256": "1126f61d9d300d165221419f54fef847dda955c9cb80a817f4b71b7c2fa187eb",
+  "archive_bytes": 13044414,
+  "profile": "360_p2",
+  "board": "360,p2",
+  "flash_bytes": 16777216,
+  "firmware_offset": 327680,
+  "firmware_bytes": 16449536
+}
