@@ -12,7 +12,8 @@ import zlib
 from test_verify_image import encode, fixture
 
 ROOT = Path(__file__).resolve().parents[1]
-PACKAGES = ['kmod-mt7603','kmod-mt76x2','kmod-usb2','kmod-usb-ohci','kmod-usb-storage','block-mount','kmod-fs-ext4','luci-base']
+OPENCLASH_MODULES = ['kmod-tun', 'kmod-nft-tproxy', 'kmod-inet-diag']
+PACKAGES = ['kmod-mt7603','kmod-mt76x2','kmod-usb2','kmod-usb-ohci','kmod-usb-storage','block-mount','kmod-fs-ext4','luci-base'] + OPENCLASH_MODULES
 
 
 def image(kernel=None):
@@ -51,6 +52,42 @@ class CollectArtifacts(unittest.TestCase):
             run,output = self.run_collect(folder,[p for p in PACKAGES if p!='kmod-usb2'])
             self.assertNotEqual(run.returncode,0)
             self.assertEqual(list(output.glob('*.bin')),[])
+
+    def test_missing_openclash_module_publishes_no_binary(self):
+        for module in OPENCLASH_MODULES:
+            with self.subTest(module=module), tempfile.TemporaryDirectory() as folder:
+                run,output = self.run_collect(folder,[p for p in PACKAGES if p!=module])
+                self.assertNotEqual(run.returncode,0)
+                self.assertIn(module,run.stderr)
+                self.assertEqual(list(output.glob('*.bin')),[])
+
+    def test_failure_diagnostics_exclude_firmware_packages_and_archives(self):
+        with tempfile.TemporaryDirectory() as folder:
+            source = Path(folder)/'source'
+            target = source/'bin/targets/ramips/mt76x8'
+            target.mkdir(parents=True)
+            metadata = {
+                'profiles.json': '{"profiles": {}}',
+                'config.buildinfo': 'CONFIG_TARGET_ramips=y',
+                'immortalwrt-ramips-mt76x8-360_p2.manifest': 'kernel - 1',
+            }
+            for name,content in metadata.items():
+                (target/name).write_text(content)
+            for name in ['rejected-360_p2-squashfs-sysupgrade.bin',
+                         'rejected-360_p2-initramfs-kernel.bin',
+                         'kernel.apk', 'UNVERIFIED-target-output.tar.gz',
+                         'private-key.pem']:
+                (target/name).write_bytes(b'must not be uploaded')
+            output = Path(folder)/'output'
+            run = subprocess.run([sys.executable,str(ROOT/'collect_artifacts.py'),
+                                  str(source),str(output),'--diagnostics-only'],
+                                 capture_output=True,text=True)
+            self.assertEqual(run.returncode,0,run.stderr)
+            diagnostics = output/'diagnostics'
+            self.assertEqual({p.name for p in diagnostics.iterdir()},
+                             set(metadata)|{'DO-NOT-FLASH.txt'})
+            for name,content in metadata.items():
+                self.assertEqual((diagnostics/name).read_text(),content)
 
     def test_corrupt_second_image_does_not_publish_first(self):
         with tempfile.TemporaryDirectory() as folder:
