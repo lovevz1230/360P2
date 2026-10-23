@@ -59,6 +59,7 @@ cd "$source_dir"
     CONFIG_PACKAGE_kmod-mt76x2 CONFIG_PACKAGE_kmod-usb2 \
     CONFIG_PACKAGE_kmod-usb-ohci CONFIG_PACKAGE_kmod-usb-storage \
     CONFIG_PACKAGE_kmod-fs-ext4 CONFIG_PACKAGE_block-mount \
+    CONFIG_PACKAGE_kmod-tun CONFIG_PACKAGE_kmod-nft-tproxy CONFIG_PACKAGE_kmod-inet-diag \
     CONFIG_PACKAGE_luci CONFIG_PACKAGE_luci-i18n-base-zh-cn; do
     grep -qx "$selection=y" .config || { echo "Required selection missing: $selection" >&2; exit 1; }
   done

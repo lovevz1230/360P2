@@ -11,6 +11,22 @@ import sys
 BUNDLE = Path(__file__).resolve().parent
 
 
+def collect_failure_diagnostics(source, output):
+    target = source/'bin/targets/ramips/mt76x8'
+    diagnostics = output/'diagnostics'
+    diagnostics.mkdir(parents=True,exist_ok=True)
+    metadata_names = {'profiles.json','feeds.buildinfo','version.buildinfo','config.buildinfo'}
+    if target.is_dir():
+        for path in target.iterdir():
+            if path.is_symlink() or not path.is_file():
+                continue
+            if path.name in metadata_names or path.name.endswith('-360_p2.manifest'):
+                shutil.copyfile(path,diagnostics/path.name)
+    (diagnostics/'DO-NOT-FLASH.txt').write_text(
+        'DIAGNOSTICS ONLY: no firmware binaries are included. This directory cannot be flashed.\n',
+        encoding='utf-8')
+
+
 def collect(source, output):
     target = source/'bin/targets/ramips/mt76x8'
     images = sorted(target.glob('*-360_p2-*.bin'))
@@ -33,7 +49,8 @@ def collect(source, output):
     manifest = target/(sysup[0].name.removesuffix('-squashfs-sysupgrade.bin')+'.manifest')
     if not manifest.is_file(): raise ValueError('Package manifest missing')
     package_names = {line.split()[0] for line in manifest.read_text().splitlines() if line.split()}
-    required = {'kmod-mt7603','kmod-mt76x2','kmod-usb2','kmod-usb-ohci','kmod-usb-storage','block-mount','kmod-fs-ext4','luci-base'}
+    required = {'kmod-mt7603','kmod-mt76x2','kmod-usb2','kmod-usb-ohci','kmod-usb-storage','block-mount','kmod-fs-ext4','luci-base',
+                'kmod-tun','kmod-nft-tproxy','kmod-inet-diag'}
     if not required <= package_names:
         raise ValueError('Required packages absent from built manifest: '+str(sorted(required-package_names)))
     # Do not expose any flashable output until both images and package selection pass.
@@ -51,4 +68,9 @@ def collect(source, output):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(); parser.add_argument('source',type=Path); parser.add_argument('output',type=Path)
-    args = parser.parse_args(); collect(args.source,args.output)
+    parser.add_argument('--diagnostics-only',action='store_true')
+    args = parser.parse_args()
+    if args.diagnostics_only:
+        collect_failure_diagnostics(args.source,args.output)
+    else:
+        collect(args.source,args.output)
